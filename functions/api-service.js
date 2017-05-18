@@ -17,39 +17,36 @@ const APIService = {
       return;
     }
 
-    // store user into database
-    new Promise ((resolve, reject) =>
-      admin.database()
-        .ref('/emails/' + user.email)
-        .transaction(exist => {
-          if (exist) return;
-          return admin.database().ref() + 'users/' + user.userName;
-        }, (err, committed) => {
-          if (err) reject(new APIError('[Error] Fail to store email'));
-          else if (!committed) reject(new APIError('Email address already exists', 400));
-          else resolve();
-        }))
-      .then(() => new Promise((resolve, reject) =>
+    admin.auth().createUser({
+      email: user.email,
+      emailVerified: false,
+      password: "secretPassword",
+      displayName: user.firstName + ' ' + user.lastName,
+      photoURL: user.profileUrl,
+      disabled: false,
+    })
+      .then(userRecord => new Promise((resolve, reject) =>
         admin.database()
-        .ref('/users/' + user.userName)
-        .transaction(exist => {
-          if (exist) return;
-          return user;
-        }, (err, committed) => {
-          if (err) {
-            admin.database().ref('/emails/' + user.email).remove(); // revert
-            reject(new APIError('[Error] Fail to store user'));
-          }
-          else if (!committed) {
-            admin.database().ref('/emails/' + user.email).remove(); // revert
-            reject(new APIError('Username already exists', 400));
-          }
-          else resolve(user);
-        })))
-      .then(user => res.status(200).send(user))
+          .ref('/users/' + user.userName)
+          .transaction(exist => {
+            if (exist) return;
+            return user;
+          }, (err, committed) => {
+            if (err) {
+              admin.auth().deleteUser(userRecord.uid);
+              reject(new APIError('[Error] Fail to store user'));
+              return;
+            } else if (!committed) {
+              admin.auth().deleteUser(userRecord.uid);
+              reject(new APIError('Username already exists', 400));
+              return;
+            }
+            resolve();
+          })))
+      .then(() => res.status(200).send(user))
       .catch(err => {
         const statusCode = err.statusCode ? err.statusCode : 500;
-        res.status(statusCode).send(err.message);
+        res.status(statusCode).send(err.message)
       });
   }
 };
