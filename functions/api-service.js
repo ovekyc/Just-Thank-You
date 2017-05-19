@@ -1,6 +1,9 @@
 const admin = require('firebase-admin');
 const createUser = require('./models/user');
 const APIError = require('./util/api-error');
+const config = require('./config/google-cloud.json');
+const gcs = require('@google-cloud/storage')(config);
+const stream = require('stream');
 
 const APIService = {
   signUp: function (req, res) {
@@ -47,6 +50,25 @@ const APIService = {
       .catch(err => {
         const statusCode = err.statusCode ? err.statusCode : 500;
         res.status(statusCode).send(err.message)
+      });
+  },
+
+  uploadProfile(req, res) {
+    const bucket = gcs.bucket(config.bucket);
+    const username = req.body.username;
+    const base64Image = req.body.image;
+
+    var buf = new stream.PassThrough();
+    buf.end(Buffer.from(base64Image, 'base64'));
+
+    const file = bucket.file('/photos/profile/' + username + '.jpg');
+    buf
+      .pipe(file.createWriteStream())
+      .on('error', err => {
+        res.status(500).send(err.message);
+      })
+      .on('finish', () => {
+        res.status(200).send('Profile image was uploaded');
       });
   }
 };

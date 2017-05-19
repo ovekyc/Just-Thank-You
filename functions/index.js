@@ -11,3 +11,11 @@ exports.signUp = functions.https.onRequest((req, res) => {
   }
   res.status(405).send('Method not allowed');
 });
+
+exports.uploadProfile = functions.https.onRequest((req, res) => {
+  if (req.method.toUpperCase() === 'POST') {
+    APIService.uploadProfile(req, res);
+    return;
+  }
+  res.status(405).send('Method not allowed');
+});

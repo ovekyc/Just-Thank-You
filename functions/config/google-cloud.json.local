@@ -1,0 +1,5 @@
+{
+  "projectId" : "project-id",
+  "keyFilename": "keyfile-path",
+  "bucket": "bucket-name"
+}
